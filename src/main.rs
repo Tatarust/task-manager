@@ -27,7 +27,9 @@ struct App {
 impl App {
     fn new() -> Self {
         let runtime = Runtime::new().unwrap();
-        let pool = runtime.block_on(Self::init_database());
+        let pool = runtime.block_on(async {
+            Self::init_database().await
+        });
 
         Self {
             pool: Some(pool),
@@ -38,16 +40,21 @@ impl App {
     }
 
     async fn init_database() -> Pool<Postgres> {
-        let database_url = "postgres://user:password@localhost/task_manager_database";
+        // let database_url = "postgres://user:password@localhost/task_manager_database";
+        let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL DOESNT EXPORTED");
+        println!("{}", database_url);
         let pool = sqlx::postgres::PgPoolOptions::new()
-            .connect(database_url)
+            .connect(&database_url)
             .await
             .expect("Failed to connect to Database");
-
-        sqlx::query("CREATE TABLE IF NOT EXISTS tasks (id SERIAL PRIMARY KEY, task TEXT NOT NULL)")
-            .execute(&pool)
-            .await
-            .expect("Failed to create table");
+        match sqlx::query_scalar!("SELECT 1").fetch_one(&pool).await {
+            Ok(_) => println!("Testing SQL-query works"),
+            Err(err) => println!("Error: {}", err),
+        }
+        // sqlx::query!("CREATE TABLE IF NOT EXISTS tasks (id SERIAL PRIMARY KEY, task TEXT NOT NULL)")
+        //     .execute(&pool)
+        //     .await
+        //     .expect("Failed to create table");
         println!("Database init works");
         pool
     }
@@ -59,6 +66,7 @@ impl App {
 
             self.runtime.spawn(async move {
                 if let Some(pool) = pool {
+                    println!("loading works");
                     let rows = sqlx::query!("SELECT task, id FROM tasks")
                     .fetch_all(&pool)
                     .await
@@ -66,6 +74,8 @@ impl App {
                     let mut tasks_lock = tasks.lock().unwrap();
                     *tasks_lock = rows.into_iter().map(|row| Task::new(row.id, row.task)).collect();
                     println!("loading works");
+                } else {
+                    println!("load_tasks():no pool");
                 }
                 ctx.request_repaint();
             });
@@ -86,6 +96,8 @@ impl App {
                 let mut tasks_lock = tasks.lock().unwrap();
                 tasks_lock.retain(|task| task.id != task_id);
                 println!("removing works");
+        } else {
+            println!("remove_task(): no pool")
         }
             ctx.request_repaint();
         });
@@ -93,8 +105,10 @@ impl App {
 
     async fn add_task(&mut self, ctx: egui::Context, input: String) {
         if input.trim().is_empty() {
+            println!("add_task(): empty task");
             return;
         }
+        println!("Adding input: {}", input);
 
         let pool = self.pool.clone();
         let tasks = Arc::clone(&self.tasks);
@@ -109,6 +123,8 @@ impl App {
                 let mut tasks_lock = tasks.lock().unwrap();
                 tasks_lock.push(Task::new(row.id, input));
                 println!("adding works");
+            } else {
+                println!("add_task(): no pool")
             }
             ctx.request_repaint();
         });
@@ -117,6 +133,9 @@ impl App {
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        if self.pool.is_none() {
+            println!("pool is empty");
+        }
         egui::CentralPanel::default().show(ctx, |ui| {
             if ui.button("Load tasks").clicked() {
                 println!("load tasks pressed");
@@ -160,8 +179,17 @@ impl eframe::App for App {
     }
 }
 
-#[tokio::main]
-async fn main() {
+fn main() {
+    //     Some(pool) => {
+    //         println!("Connect to database");
+    //         pool
+    //     }
+    //     None => {
+    //         eprintln!("Error: cannot connect to database");
+    //         return;
+    //     }
+    // };
+
     let options = eframe::NativeOptions::default();
 
     eframe::run_native("Task manager", options, Box::new(|_cc| Box::new(App::new())));
