@@ -42,7 +42,7 @@ impl Backend {
 
         self.runtime.block_on(async move {
             let rows = sqlx::query!("SELECT task, id FROM tasks")
-                .fetch_all(&self.pool)
+                .fetch_all(&pool)
                 .await
                 .expect("Failed to load tasks");
             
@@ -53,7 +53,7 @@ impl Backend {
     pub fn add_task(&self, description: String) {
         let pool: Pool<Postgres> = self.pool.clone();
 
-        self.runtime.spawn(async move {
+        self.runtime.block_on(async move {
             sqlx::query!("INSERT INTO tasks (task) VALUES ($1)", description)
                 .execute(&pool)
                 .await

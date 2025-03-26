@@ -1,6 +1,7 @@
 use crate::backend::{Backend, Task};
 use egui::{CentralPanel, Context, Ui};
 use eframe::Frame;
+
 pub struct App {
     backend: Backend,
     tasks: Vec<Task>,
@@ -28,7 +29,6 @@ impl eframe::App for App {
             let mut id_to_remove: Option<i32> = None;
 
             ui.heading("Tasks");
-
             for task in tasks.iter() {
                 ui.horizontal(|ui: &mut Ui| {
                     ui.label(format!("{}: {}", task.id(), task.description()));
@@ -51,12 +51,10 @@ impl eframe::App for App {
 
                 if ui.button("Add").clicked() {
                     if !text_input.trim().is_empty() {
-                        backend.runtime.block_on(async {
-                            backend.add_task(text_input.clone());
-                            ctx.request_repaint();
-                        });
+                        backend.add_task(text_input.clone());
                         *tasks = backend.load_tasks();
                         text_input.clear();
+                        ctx.request_repaint();
                     } 
                 }
             });
