@@ -32,8 +32,9 @@ pub struct Backend {
 impl Backend {
     pub fn new(runtime: Handle, database_url: &str) -> Self {
         let pool: Pool<Postgres> = runtime.block_on(async {
-            PgPool::connect(database_url).await.expect("Error: connect")
+            PgPool::connect(database_url).await.expect("Error: error connection to pool")
         });
+
         Self { runtime, pool }
     }
     
@@ -63,13 +64,25 @@ impl Backend {
 
     pub fn remove_task(&self, id: i32) {
         let pool: Pool<Postgres> = self.pool.clone();
-        self.runtime.spawn(async move {
+
+        self.runtime.block_on(async move {
             if let Err(e) = sqlx::query!("DELETE FROM tasks WHERE id = $1", id)
                 .execute(&pool)
                 .await
             {
                 eprintln!("Error remove: {:?}", e);
             }
+        });
+    }
+
+    pub fn update_task(&self, id: i32, description: String) {
+        let pool: Pool<Postgres> = self.pool.clone();
+
+        self.runtime.block_on(async move {
+            sqlx::query!("UPDATE tasks SET task = $1 WHERE id = $2", description, id)
+                .execute(&pool)
+                .await
+                .expect("Error update");
         });
     }
 }
