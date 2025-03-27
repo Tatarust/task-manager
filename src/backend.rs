@@ -24,8 +24,10 @@ impl Task {
 
 }
 
+
+
 pub struct Backend {
-    pub runtime: Handle,
+    runtime: Handle,
     pool: PgPool,
 }
 
@@ -35,7 +37,23 @@ impl Backend {
             PgPool::connect(database_url).await.expect("Error: error connection to pool")
         });
 
-        Self { runtime, pool }
+        let pool: &Pool<Postgres> = &pool;
+
+        runtime.block_on(async move {
+            sqlx::query!(
+                r#"
+                CREATE TABLE IF NOT EXISTS tasks (
+                    id SERIAL PRIMARY KEY,
+                    task TEXT NOT NULL
+                )
+                "#
+            )
+            .execute(pool)
+            .await
+            .expect("Error: create table");            
+        });
+
+        Self { runtime, pool: pool.clone() }
     }
     
     pub fn load_tasks(&self) -> Vec<Task> {
@@ -58,7 +76,7 @@ impl Backend {
             sqlx::query!("INSERT INTO tasks (task) VALUES ($1)", description)
                 .execute(&pool)
                 .await
-                .ok();
+                .expect("Error add task");
         });
     }
 
@@ -66,12 +84,10 @@ impl Backend {
         let pool: Pool<Postgres> = self.pool.clone();
 
         self.runtime.block_on(async move {
-            if let Err(e) = sqlx::query!("DELETE FROM tasks WHERE id = $1", id)
+            sqlx::query!("DELETE FROM tasks WHERE id = $1", id)
                 .execute(&pool)
                 .await
-            {
-                eprintln!("Error remove: {:?}", e);
-            }
+                .expect("Error delete task")
         });
     }
 
@@ -82,7 +98,7 @@ impl Backend {
             sqlx::query!("UPDATE tasks SET task = $1 WHERE id = $2", description, id)
                 .execute(&pool)
                 .await
-                .expect("Error update");
+                .expect("Error update task");
         });
     }
 }
