@@ -54,8 +54,8 @@ impl eframe::App for App {
             ui.heading("Tasks");
             
             ScrollArea::vertical().show(ui, |ui| {
-                for task in tasks.iter() {
-                    ui.collapsing(format!("{}: {}", task.id(), task.description()), |ui: &mut Ui |{
+                for (index, task) in tasks.iter().enumerate() {
+                    ui.collapsing(format!("{}: {}", index + 1, task.description()), |ui: &mut Ui |{
                         ui.menu_button("✏", |ui: &mut Ui| {
                             ui.text_edit_singleline(change_input);
                             

@@ -7,4 +7,4 @@ edition = "2024"
 eframe = "0.27"
 egui = "0.27"
 tokio = { version = "1.43.0", features = ["full"] }
-sqlx = { version = "0.7", features = ["postgres", "runtime-tokio", "macros"]}
+sqlx = { version = "0.7", features = ["sqlite", "runtime-tokio", "macros"]}
