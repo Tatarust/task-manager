@@ -1,5 +1,5 @@
 use tokio::runtime::Handle;
-use sqlx::{Row, Executor, Sqlite, SqlitePool, Pool};
+use sqlx::{Row, Sqlite, SqlitePool, Pool};
 
 
 pub struct Task {
