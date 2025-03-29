@@ -25,28 +25,24 @@ impl App {
 impl eframe::App for App {
     fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
         CentralPanel::default().show(ctx, |ui: &mut Ui| {
-            configure_fonts(ctx);
-
-            let backend: &Backend = &self.backend;
-            let tasks: &mut Vec<Task> = &mut self.tasks;
-            let pin_input: &mut String = &mut self.pin_input;
-            let change_input: &mut String = &mut self.change_input;
             let mut remove_id: Option<i32> = None;
+
+            configure_fonts(ctx);
 
             ui.vertical_centered(|ui: &mut Ui| {
                 ui.heading("Pin task");
-                ui.text_edit_singleline(pin_input);
+                ui.text_edit_singleline(&mut self.pin_input);
 
                 if ui.button("📌").clicked() {
-                    if !pin_input.trim().is_empty() {
-                        backend.add_task(pin_input.clone());
-                        pin_input.clear();
+                    if !self.pin_input.trim().is_empty() {
+                        self.backend.add_task(self.pin_input.clone());
+                        self.pin_input.clear();
                     } 
                 }
             });
 
             if let Some(id) = remove_id {
-                tasks.retain(|task: &Task| task.id() != id);
+                self.tasks.retain(|task: &Task| task.id() != id);
             }
 
             ui.separator();
@@ -54,27 +50,27 @@ impl eframe::App for App {
             ui.heading("Tasks");
             
             ScrollArea::vertical().show(ui, |ui| {
-                for (index, task) in tasks.iter().enumerate() {
+                for (index, task) in self.tasks.iter().enumerate() {
                     ui.collapsing(format!("{}: {}", index + 1, task.description()), |ui: &mut Ui |{
                         ui.menu_button("✏", |ui: &mut Ui| {
-                            ui.text_edit_singleline(change_input);
+                            ui.text_edit_singleline(&mut self.change_input);
                             
                             if ui.button("Change").clicked() {
-                                backend.update_task(task.id().clone(), change_input.clone());
-                                change_input.clear();
+                                self.backend.update_task(task.id().clone(), self.change_input.clone());
+                                self.change_input.clear();
                                 ui.close_menu();
                             }
                         });
     
                         if ui.button("🗙").clicked() {
                             remove_id = Some(task.id());
-                            backend.remove_task(task.id());
+                            self.backend.remove_task(task.id());
                         }
                     });
                 }
             });
             
-            *tasks = backend.load_tasks();
+            self.tasks = self.backend.load_tasks();
             ctx.request_repaint();
         });
     }
